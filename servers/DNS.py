@@ -62,6 +62,8 @@ class DNS(BaseRequestHandler):
 			    					rdata=A(self.client_address[0])))
 			elif request.q.qtype == QTYPE.SRV:
 				if 'kerberos' in str(request.q.qname):
+					port = 88
+				elif 'ldap' in str(request.q.qname):
 					port = 389
 				else:
 					port = 25
