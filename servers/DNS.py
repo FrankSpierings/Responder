@@ -59,7 +59,7 @@ class DNS(BaseRequestHandler):
 			if request.q.qtype == QTYPE.A:
 			    reply.add_answer(RR(rname=request.q.qname,
 			    					rtype=QTYPE.A,
-			    					rdata=A(self.client_address[0])))
+			    					rdata=A(settings.Config.Bind_To)))
 			elif request.q.qtype == QTYPE.SRV:
 				if 'kerberos' in str(request.q.qname):
 					port = 88
@@ -72,7 +72,13 @@ class DNS(BaseRequestHandler):
 									rdata=SRV(priority=0, 
 											weight=100,
 											port=port,
-											target="iamevil.owned.com")))
+											target="dc01.corp.local")))
+			elif request.q.qtype == QTYPE.SOA:
+				reply.add_answer(RR(rname=request.q.qname,
+									rtype=QTYPE.SOA,
+									rdata=SOA(mname='dc01.corp.local',
+											  rname='hostmaster.corp.local')
+					))
 
 			print('\n')
 			print(reply)
